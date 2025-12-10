@@ -1,4 +1,4 @@
-import { PathOptions, RelativeTo } from "./Types";
+import { PathOptions, RelativeFrom } from "./Types";
 import { toSearchParams } from "./Utils";
 
 export class Segment {
@@ -27,12 +27,12 @@ export class Segment {
     return segments;
   }
 
-  relativeTo(location: RelativeTo): string {
+  relativeFrom(prevLocation: RelativeFrom): string {
     const fromParts = this.segments();
-    if (typeof location === "object") {
-      location = location.path();
+    if (typeof prevLocation === "object") {
+      prevLocation = prevLocation.path();
     }
-    const toParts = location.replace(/\/+/, "/").split("/").filter(Boolean);
+    const toParts = prevLocation.replace(/\/+/, "/").split("/").filter(Boolean);
 
     let i = 0;
     while (

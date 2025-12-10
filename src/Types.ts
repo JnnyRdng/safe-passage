@@ -1,20 +1,22 @@
-// router.ts
+// === Route Definition DSL ===
+
+/** The allowable arg types for a route parameter */
 export type ArgTypes = "string" | "number" | "boolean" | "bigint" | "symbol";
 
-// Route DSL
-type Leaf = {
+type LeafNode = {
   __argType?: ArgTypes;
 };
 
 type RouteNode = {
   __argType?: ArgTypes;
 } & {
-  [K in Exclude<string, "__argType">]?: Def;
+  [K in Exclude<string, "__argType">]?: RouteDefinition;
 };
 
-export type Def = Leaf | RouteNode;
+/** A route definition */
+export type RouteDefinition = LeafNode | RouteNode;
 
-/* ===== Type-safe RouterAPI ===== */
+// === Router API ===
 
 // Strip __argType for child type inference
 type Clean<T> = {
@@ -30,25 +32,20 @@ type TypeMap = {
   symbol: symbol;
 };
 
-export type SearchParamsInput = Record<
-  string,
-  string | number | boolean | string[] | number[] | boolean[] | undefined | null
->;
-
-export type PathOptions = {
-  params?: SearchParamsInput;
-};
-
+/** Public methods exposed to each segment in a route */
 export type PublicMethods = {
+  /**Print the absolute path.  */
   path(options?: PathOptions): string;
   toString: () => string;
+  /** Return the segment name */
   segment(): string;
+  /** Return the path as an array of segments */
   segments(): string[];
-  relativeTo(location: RelativeTo): string;
+  /** Get the relative path from the `prevLocation` */
+  relativeFrom(prevLocation: RelativeFrom): string;
 };
 
-
-// Router output type
+/** A traversable, callable tree of route segments */
 export type RouterAPI<T> = PublicMethods & {
   [K in keyof T as K extends "__argType" ? never : K]: T[K] extends {
     __argType: infer A;
@@ -59,6 +56,18 @@ export type RouterAPI<T> = PublicMethods & {
     : RouterAPI<Clean<T[K]>>;
 };
 
-/* ===== Runtime node ===== */
+// === Util types ===
 
-export type RelativeTo = string | { path: () => string };
+/** URL Search Params definition */
+export type SearchParamsInput = Record<
+  string,
+  string | number | boolean | string[] | number[] | boolean[] | undefined | null
+>;
+
+/** Options for printing a path to a string */
+export type PathOptions = {
+  params?: SearchParamsInput;
+};
+
+/** A path or path-like input to find a relative path from */
+export type RelativeFrom = string | { path: () => string };

@@ -1,15 +1,15 @@
 import { Segment } from "./Segment";
-import { Def, RouterAPI } from "./Types";
+import { RouteDefinition, RouterAPI } from "./Types";
 import { checkArgType, getPublicApiMethods } from "./Utils";
 
-export const buildRoutes = <T extends Def>(
+export const buildRoutes = <T extends RouteDefinition>(
   def: T,
   parent: Segment | null = null
 ): RouterAPI<T> => {
   const api: any = {};
 
   for (const key of Object.keys(def)) {
-    const children = def[key as keyof Def] as Def;
+    const children = def[key as keyof RouteDefinition] as RouteDefinition;
 
     const isArg =
       children &&
@@ -54,8 +54,6 @@ export const buildRoutes = <T extends Def>(
   Object.assign(api, getPublicApiMethods(segmentForApi));
   return api as RouterAPI<T>;
 };
-
-
 
 /* ===== Example usage ===== */
 

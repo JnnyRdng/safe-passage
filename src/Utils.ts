@@ -1,5 +1,10 @@
 import { Segment } from "./Segment";
-import { ArgTypes, PublicMethods, RelativeTo, SearchParamsInput } from "./Types";
+import {
+  ArgTypes,
+  PublicMethods,
+  RelativeFrom,
+  SearchParamsInput,
+} from "./Types";
 
 export const toSearchParams = (input?: SearchParamsInput): string => {
   if (input === undefined) return "";
@@ -22,7 +27,8 @@ export const getPublicApiMethods = (segment: Segment): PublicMethods => ({
   path: (params?: SearchParamsInput) => segment.path(params),
   segment: () => segment.segmentOnly(),
   segments: () => segment.segments(),
-  relativeTo: (location: RelativeTo) => segment.relativeTo(location),
+  relativeFrom: (prevLocation: RelativeFrom) =>
+    segment.relativeFrom(prevLocation),
 });
 
 export const checkArgType = (t: ArgTypes, value: any) => {

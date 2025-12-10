@@ -1,172 +1,268 @@
 // router.ts
-type Types = "string" | "number" | "boolean" | "bigint" | "symbol";
+type ArgTypes = "string" | "number" | "boolean" | "bigint" | "symbol";
 
-/* ====== Input DSL types (you already had these) ====== */
-
-// A leaf may or may not have __type
+// Route DSL
 type Leaf = {
-  __type?: Types;
+  __argType?: ArgTypes;
 };
 
-// A route node: may have __type and arbitrary child Defs
 type RouteNode = {
-  __type?: Types;
+  __argType?: ArgTypes;
 } & {
-  [K in Exclude<string, "__type">]?: Def;
+  [K in Exclude<string, "__argType">]?: Def;
 };
 
 export type Def = Leaf | RouteNode;
 
-/* ====== Compile-time mapped types for the output router ====== */
+/* ===== Type-safe RouterAPI ===== */
 
-/** Utility: append segment to prefix */
-type AppendPrefix<P extends string, S extends string> = P extends "" ? `/${S}` : `${P}/${S}`;
-
-/** ChildrenOf<D> is the object containing only the literal child keys (excluding "__type") */
-type ChildrenOf<D> = D extends object ? Omit<D, "__type"> : {};
-
-/** Detect whether a given child type literal has the __type key present */
-type HasTypeProp<D> = D extends { __type: any } ? (undefined extends D["__type"] ? true : true) : false;
-
-/**
- * The Router type produced for a Def D.
- * - path(): string
- * - exact set of child properties (no index signature)
- */
-export type RouterFor<D extends Def, P extends string = ""> = {
-  path(): string;
-} & {
-  [K in keyof ChildrenOf<D> & string]: SegmentFor<
-    K,
-    // ChildDef may be optional in the input; make it required here for mapping
-    NonNullable<ChildrenOf<D>[K]>,
-    AppendPrefix<P, K>
-  >;
+// Strip __argType for child type inference
+type Clean<T> = {
+  [K in keyof T as K extends "__argType" ? never : K]: T[K];
 };
 
-/**
- * SegmentFor<Name, ChildDef, Prefix>
- * If the child has a __type property (present in the literal), then it is dynamic:
- *   - it is callable: (id?: string) => RouterFor<...>
- *   - and the callable also has nested child properties and .path()
- * If not dynamic, it is a plain RouterFor object.
- */
-type SegmentFor<Name extends string, C extends Def, P extends string> =
-  HasTypeProp<C> extends true
-    ? // callable & object
-      ((id?: string) => RouterFor<C, P>) & RouterFor<C, P>
-    : // plain object
-      RouterFor<C, P>;
+// Map Types to actual TS types
+type TypeMap = {
+  string: string;
+  number: number;
+  boolean: boolean;
+  bigint: bigint;
+  symbol: symbol;
+};
 
-/* ====== Runtime builder ====== */
+type SearchParamsInput = Record<
+  string,
+  string | number | boolean | string[] | number[] | boolean[] | undefined | null
+>;
 
-/**
- * buildRouter(def, prefix)
- * - returns an object whose shape matches RouterFor<D,P>
- * - no index signatures leak into the returned object's type because RouterFor is keyed by literal keys
- */
-const buildRouter = <D extends Def>(def: D, prefix = ""): RouterFor<D, typeof prefix> => {
-  // runtime record we'll populate and then cast
-  const out: Record<string, any> = {};
+type PathOptions = {
+  params?: SearchParamsInput;
+};
 
-  // path() for this node
-  out.path = () => (prefix === "" ? "" : prefix);
-
-  // iterate only own keys (skip "__type")
-  for (const key of Object.keys(def).filter((k) => k !== "__type")) {
-    const childDef = (def as any)[key] as Def | undefined;
-    const child = (childDef ?? {}) as Def;
-
-    const childPrefix = prefix === "" ? `/${key}` : `${prefix}/${key}`;
-
-    const isDynamic = "__type" in child && (child as any).__type !== undefined;
-
-    if (isDynamic) {
-      // create callable function (unfilled)
-      const makeInstance = (filledId?: string) => {
-        // instance object used when the segment has been "called" (may have filledId)
-        const inst: Record<string, any> = {};
-
-        // path: if filledId provided use the literal, otherwise use :name
-        inst.path = () =>
-          (filledId ? `${childPrefix}/${filledId}` : `${childPrefix}/:${key}`).replace(/\/+/g, "/");
-
-        // attach children (so you can traverse after calling)
-        const childRouter = buildRouter(child, inst.path());
-        Object.assign(inst, childRouter);
-
-        return inst as RouterFor<typeof child, string>;
-      };
-
-      // the callable itself (unfilled)
-      const fn: any = (id?: string) => makeInstance(id);
-
-      // path() on the callable (unfilled)
-      fn.path = () => `${childPrefix}/:${key}`;
-
-      // attach children to the callable so traversal without calling works
-      const childRouterForCallable = buildRouter(child, fn.path());
-      Object.assign(fn, childRouterForCallable);
-
-      out[key] = fn;
+const toSearchParams = (input?: SearchParamsInput): string => {
+  if (input === undefined) return "";
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(input)) {
+    if (value === undefined || value === null) continue;
+    if (Array.isArray(value)) {
+      for (const v of value) {
+        params.append(key, String(v));
+      }
     } else {
-      // static child: just an object with its path and nested children
-      out[key] = buildRouter(child, childPrefix);
+      params.append(key, value.toString());
+    }
+  }
+  return `?${params.toString()}`;
+};
+
+type PublicMethods = {
+  path(options?: PathOptions): string;
+  toString: () => string;
+  segment(): string;
+  segments(): string[];
+  relativeTo(location: RelativeTo): string;
+};
+
+// Router output type
+export type RouterAPI<T> = PublicMethods & {
+  [K in keyof T as K extends "__argType" ? never : K]: T[K] extends {
+    __argType: infer A;
+  }
+    ? (
+        value?: A extends keyof TypeMap ? TypeMap[A] : never
+      ) => RouterAPI<Clean<T[K]>>
+    : RouterAPI<Clean<T[K]>>;
+};
+
+/* ===== Runtime node ===== */
+
+type RelativeTo = string | { path: () => string };
+
+class Segment {
+  constructor(
+    private readonly segment: string | null,
+    private readonly parent: Segment | null
+  ) {}
+
+  path(options?: PathOptions): string {
+    const segments = this.segments();
+    const full = `/${segments.join("/")}${toSearchParams(options?.params)}`;
+    return full.replace(/\/+/, "/");
+  }
+
+  segmentOnly(): string {
+    return this.segment ?? "/";
+  }
+
+  segments(): string[] {
+    const segments: string[] = [this.segmentOnly()];
+    let parent = this.parent;
+    while (parent !== null) {
+      segments.unshift(parent.segmentOnly());
+      parent = parent.parent;
+    }
+    return segments;
+  }
+
+  relativeTo(location: RelativeTo): string {
+    const fromParts = this.segments();
+    if (typeof location === "object") {
+      location = location.path();
+    }
+    const toParts = location.replace(/\/+/, "/").split("/").filter(Boolean);
+
+    let i = 0;
+    while (
+      i < fromParts.length &&
+      i < toParts.length &&
+      fromParts[i] === toParts[i]
+    ) {
+      i++;
+    }
+
+    const down = toParts.length - i;
+    const up = fromParts.slice(i);
+
+    return `${new Array(down).fill("..").join("/")}${
+      down && up.length ? "/" : ""
+    }${up.join("/")}`;
+  }
+}
+
+/* ===== Build router recursively ===== */
+
+export const buildRoutes = <T extends Def>(
+  def: T,
+  parent: Segment | null = null
+): RouterAPI<T> => {
+  const api: any = {};
+
+  for (const key of Object.keys(def)) {
+    const children = def[key as keyof Def] as Def;
+
+    const isArg =
+      children &&
+      typeof children === "object" &&
+      Object.hasOwn(children, "__argType");
+
+    if (isArg) {
+      const { __argType, ...rest } = children;
+
+      api[key] = function (value?: any) {
+        const v = arguments.length === 0 ? `:${key}` : value; // ← use :keyName if no argument
+        // runtime type checking only if a real value is provided
+        if (
+          __argType &&
+          value !== undefined &&
+          arguments.length > 0 &&
+          !checkArgType(__argType, value)
+        ) {
+          throw new TypeError(
+            `Invalid type for segment "${key}". Expected ${__argType}, got ${typeof value}`
+          );
+        }
+
+        const childSegment = new Segment(String(v), parent);
+        return Object.keys(rest).length > 0
+          ? buildRoutes(rest, childSegment)
+          : getPublicApiMethods(childSegment);
+      };
+    } else {
+      const childSegment = new Segment(key, parent);
+      const hasChildren =
+        children &&
+        typeof children === "object" &&
+        Object.keys(children).length > 0;
+      api[key] = hasChildren
+        ? buildRoutes(children, childSegment)
+        : getPublicApiMethods(childSegment);
     }
   }
 
-  return out as RouterFor<D, typeof prefix>;
+  const segmentForApi = parent ?? new Segment(null, null);
+  Object.assign(api, getPublicApiMethods(segmentForApi));
+  return api as RouterAPI<T>;
 };
 
-/** public factory */
-export const createRouter = <D extends Def>(def: D) => {
-  // root.path() returns '/'
-  return buildRouter(def, "") as RouterFor<D, "">;
+const getPublicApiMethods = (segment: Segment): PublicMethods => ({
+  toString: () => segment.path(),
+  path: (params?: SearchParamsInput) => segment.path(params),
+  segment: () => segment.segmentOnly(),
+  segments: () => segment.segments(),
+  relativeTo: (location: RelativeTo) => segment.relativeTo(location),
+});
+
+/* ===== Runtime type check ===== */
+
+const checkArgType = (t: ArgTypes, value: any) => {
+  switch (t) {
+    case "string":
+      return typeof value === "string";
+    case "number":
+      return typeof value === "number";
+    case "boolean":
+      return typeof value === "boolean";
+    case "bigint":
+      return typeof value === "bigint";
+    case "symbol":
+      return typeof value === "symbol";
+    default:
+      return false;
+  }
 };
 
-/* ====== Example usage ====== */
+/* ===== Example usage ===== */
 
-const routeDef = {
-  rooms: {
-    roomId: {
-      __type: "string",
-      doors: {
-        doorId: {
-          __type: "string",
+export const root = buildRoutes({
+  settings: {},
+  projects: {
+    projectId: {
+      __argType: "string",
+      configuration: {},
+      enhancers: {},
+      changelog: {},
+      files: {},
+      fragments: {
+        generation: {},
+        fragmentAnalysisId: { __argType: "string" },
+        library: {
+          detail: {
+            genomicLocationId: {
+              __argType: "string",
+              fragmentId: {
+                __argType: "string",
+              },
+            },
+          },
+        },
+        reports: {},
+        experiments: {
+          detail: {
+            experimentId: {
+              __argType: "string",
+            },
+          },
         },
       },
-      windows: {},
+      analyses: {},
+    },
+    sses: {
+      generation: {},
+      explorer: {
+        sseGenerationRequestId: {
+          __argType: "string",
+        },
+      },
+      library: {
+        detail: {
+          sseId: { __argType: "string" },
+        },
+      },
     },
   },
-  foo: {
-    __type: "number",
-    bar: {}
-  }
-} as const satisfies Def;
+  genomes: { genomeId: { __argType: "string" } },
+});
 
-export const root = createRouter(routeDef);
+/* ===== Usage examples ===== */
 
-/* ====== Examples (type-check + runtime) ====== */
-
-// Compile-time: these are typed and produce intellisense
-// root.rooms           // valid
-// root.rooms.roomId    // callable + has children
-// root.rooms.windows   // valid
-// root.room            // ❌ compile-time error: Property 'room' does not exist
-
-// Runtime checks:
-console.log(root.path());                       // "/"
-console.log(root.rooms.path());                 // "/rooms"
-// console.log(root.rooms.windows.path());         // "/rooms/windows"
-console.log(root.rooms.roomId.path());          // "/rooms/roomId" ??? <-- note: path() on uncalled callable returns "/rooms/roomId/:roomId" because we set the template below
-console.log(root.rooms.roomId().path());        // "/rooms/:roomId"
-console.log(root.rooms.roomId("123").path());   // "/rooms/123"
-console.log(root.rooms.roomId("123").doors.doorId().path()); // "/rooms/123/doors/:doorId"
-console.log(root.foo('yes').bar.path())
-
-
-/*
-
-This kind of wors, but does not have:
-- autorenmaing of properties. F2 on a property in routeDef should update the build root object
-- types on the id segments. i want to be able to say "this should accept a string" or "this should accept a number"
+console.log(root.genomes.genomeId().path());

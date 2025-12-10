@@ -1,6 +1,6 @@
-import { Segment } from "./_segment";
-import { RouteDefinition, RouterAPI } from "./_types";
-import { checkArgType, getPublicApiMethods } from "./_utils";
+import { Segment } from "./segment";
+import { RouteDefinition, RouterAPI } from "./types";
+import { checkArgType, getPublicApiMethods } from "./utils";
 
 export const buildRoutes = <T extends RouteDefinition>(
   def: T,

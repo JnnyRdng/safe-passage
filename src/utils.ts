@@ -1,10 +1,10 @@
-import { Segment } from "./_segment";
+import { Segment } from "./segment";
 import {
   ArgTypes,
   PublicMethods,
   RelativeFrom,
   SearchParamsInput,
-} from "./_types";
+} from "./types";
 
 export const toSearchParams = (input?: SearchParamsInput): string => {
   if (input === undefined) return "";

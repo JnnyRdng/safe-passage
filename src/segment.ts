@@ -1,5 +1,5 @@
-import { PathOptions, RelativeFrom } from "./_types";
-import { toSearchParams } from "./_utils";
+import { PathOptions, RelativeFrom } from "./types";
+import { toSearchParams } from "./utils";
 
 export class Segment {
   constructor(

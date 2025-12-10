@@ -2,9 +2,11 @@
   "name": "safe-routes",
   "version": "1.0.0",
   "description": "typesafe route definition",
-  "main": "./src/index.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
+    "check": "tsc --noEmit",
     "dev": "ts-node-dev --respawn --clear ./src/index.ts",
     "dev:debug": "ts-node-dev --inspect=9229 --respawn --clear ./src/index.ts",
     "start": "ts-node ./src/index.ts"

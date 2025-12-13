@@ -1,6 +1,6 @@
 import { Segment } from "./segment";
-import { PublicMethods, SearchParamsInput } from "./types/api-definition";
-import { ArgTypes, ParamLiteral } from "./types/route-definition";
+import { PathOptions, PublicMethods, SearchParamsInput } from "./types/api-definition";
+import { ArgTypes, InferSearchParams, Param, ParamLiteral, Params } from "./types/route-definition";
 import { RelativeFrom } from "./types/types";
 
 export const toSearchParams = (input?: SearchParamsInput): string => {
@@ -19,15 +19,58 @@ export const toSearchParams = (input?: SearchParamsInput): string => {
   return `?${params.toString()}`;
 };
 
-export const getPublicApiMethods = (segment: Segment): PublicMethods => {
-  return {
-    toString: () => segment.path(),
-    path: (params?: SearchParamsInput) => segment.path(params),
-    segment: () => segment.segmentOnly(),
-    segments: () => segment.segments(),
-    relativeFrom: (prevLocation: RelativeFrom) =>
-      segment.relativeFrom(prevLocation),
-  };
+export const getPublicApiMethods = <S extends Params | undefined = undefined>(
+  segment: Segment,
+  search?: S
+): PublicMethods<S> => ({
+  toString: () => segment.path(),
+  path: (options?: PathOptions<S>) => {
+    if (search && options?.params) {
+      validateSearchParams(search, options.params, segment.path());
+    }
+    return segment.path(options);
+  },
+  segment: () => segment.segmentOnly(),
+  segments: () => segment.segments(),
+  relativeFrom: (prevLocation: RelativeFrom) =>
+    segment.relativeFrom(prevLocation),
+});
+
+const checkSearchType = (type: ParamLiteral, value: unknown): boolean => {
+  if (type.endsWith("[]")) {
+    if (!Array.isArray(value)) return false;
+    const base = type.slice(0, -2);
+    return value.every(v => typeof v === base);
+  }
+  return typeof value === type;
+};
+
+export const validateSearchParams = (
+  schema: Params,
+  params: Record<string, unknown>,
+  path: string
+) => {
+  for (const key of Object.keys(params)) {
+    const value = params[key];
+    const def = schema[key];
+
+    if (!def) {
+      throw new TypeError(`Unknown search parameter "${key}" for path ${path}`);
+    }
+
+    if (value === undefined) {
+      if (!def.optional) {
+        throw new TypeError(`Search parameter "${key}" is required for path ${path}`);
+      }
+      continue;
+    }
+
+    if (!checkSearchType(def.type, value)) {
+      throw new TypeError(
+        `Invalid type for search parameter "${key}", expected ${def.type} for path ${path}`
+      );
+    }
+  }
 };
 
 export const checkArgType = (t: ArgTypes, value: any) => {

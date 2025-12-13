@@ -1,5 +1,5 @@
 import { buildRoutes } from "./builder";
-import { RouteDefinition } from "./types/route-definition";
+import { InferSearchParams, RouteDefinition } from "./types/route-definition";
 
 export const defineRoute = <const T extends RouteDefinition>(
   routeDefinition: T
@@ -9,12 +9,27 @@ export type { PathOptions, SearchParamsInput } from "./types/api-definition";
 export type { ArgTypes } from "./types/route-definition";
 
 const root = defineRoute({
-  __search: {
-    food: {
-      type: "string[]",
+  bag: {
+    __search: {
+      q: {
+        type: "string",
+      },
+      page: {
+        type: 'number',
+        optional: true,
+      },
     },
-  },
-  foo: {},
+    pocket: {
+      __argType: 'string',
+      __search: {
+        page: {
+          type: 'number'
+        }
+      }
+    }
+  }
 });
 
-console.log(root.path({ params: { food: "yes" } }));
+// params is showing an error, ask if you want the text of it
+console.log(root.bag.path({ params: { q: "yes" } }));
+console.log(root.bag.pocket('foo').path({ params: { page: 5 } }))

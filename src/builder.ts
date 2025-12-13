@@ -10,23 +10,14 @@ export const buildRoutes = <const T extends RouteDefinition>(
   const api: any = {};
 
   for (const key of Object.keys(def)) {
-    const children = def[key as keyof RouteDefinition] as RouteDefinition;
-    const search = children.__search;
-    delete children.__search;
+    const { __search, __argType, ...children } = def[key as keyof RouteDefinition] as RouteDefinition;
 
     const isArg =
       children &&
       typeof children === "object" &&
       Object.hasOwn(children, "__argType");
 
-    const hasParams =
-      children &&
-      typeof children === "object" &&
-      Object.hasOwn(children, "__search");
-
-    if (isArg) {
-      const { __argType, __search: _, ...rest } = children;
-
+    if (__argType !== undefined) {
       api[key] = function (value?: any) {
         const v = arguments.length === 0 ? `:${key}` : value; // ← use :keyName if no argument
         // runtime type checking only if a real value is provided
@@ -42,9 +33,9 @@ export const buildRoutes = <const T extends RouteDefinition>(
         }
 
         const childSegment = new Segment(String(v), parent);
-        return Object.keys(rest).length > 0
-          ? buildRoutes(rest, childSegment)
-          : getPublicApiMethods(childSegment);
+        return Object.keys(children).length > 0
+          ? buildRoutes(children, childSegment)
+          : getPublicApiMethods(childSegment, __search as typeof __search);
       };
     } else {
       const childSegment = new Segment(key, parent);
@@ -54,11 +45,11 @@ export const buildRoutes = <const T extends RouteDefinition>(
         Object.keys(children).length > 0;
       api[key] = hasChildren
         ? buildRoutes(children, childSegment)
-        : getPublicApiMethods(childSegment);
+        : getPublicApiMethods(childSegment, __search as typeof __search);
     }
   }
 
   const segmentForApi = parent ?? new Segment(null, null);
-  Object.assign(api, getPublicApiMethods(segmentForApi));
+  Object.assign(api, getPublicApiMethods(segmentForApi, def.__search as typeof def.__search));
   return api as RouterAPI<T>;
 };

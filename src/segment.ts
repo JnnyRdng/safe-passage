@@ -6,7 +6,7 @@ export class Segment {
   constructor(
     private readonly segment: string | null,
     private readonly parent: Segment | null
-  ) {}
+  ) { }
 
   path(options?: PathOptions): string {
     const segments = this.segments();
@@ -47,8 +47,7 @@ export class Segment {
     const down = toParts.length - i;
     const up = fromParts.slice(i);
 
-    return `${new Array(down).fill("..").join("/")}${
-      down && up.length ? "/" : ""
-    }${up.join("/")}`;
+    return `${new Array(down).fill("..").join("/")}${down && up.length ? "/" : ""
+      }${up.join("/")}`;
   }
 }

@@ -1,5 +1,6 @@
 import { Segment } from "./segment";
-import { RouteDefinition, RouterAPI } from "./types";
+import { RouterAPI } from "./types/api-definition";
+import { RouteDefinition } from "./types/route-definition";
 import { checkArgType, getPublicApiMethods } from "./utils";
 
 export const buildRoutes = <const T extends RouteDefinition>(
@@ -10,14 +11,21 @@ export const buildRoutes = <const T extends RouteDefinition>(
 
   for (const key of Object.keys(def)) {
     const children = def[key as keyof RouteDefinition] as RouteDefinition;
+    const search = children.__search;
+    delete children.__search;
 
     const isArg =
       children &&
       typeof children === "object" &&
       Object.hasOwn(children, "__argType");
 
+    const hasParams =
+      children &&
+      typeof children === "object" &&
+      Object.hasOwn(children, "__search");
+
     if (isArg) {
-      const { __argType, ...rest } = children;
+      const { __argType, __search: _, ...rest } = children;
 
       api[key] = function (value?: any) {
         const v = arguments.length === 0 ? `:${key}` : value; // ← use :keyName if no argument

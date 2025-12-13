@@ -1,4 +1,5 @@
-import { PathOptions, RelativeFrom } from "./types";
+import { PathOptions } from "./types/api-definition";
+import { RelativeFrom } from "./types/types";
 import { toSearchParams } from "./utils";
 
 export class Segment {

@@ -1,35 +1,42 @@
-import { buildRoutes } from "./builder";
-import { InferSearchParams, RouteDefinition } from "./types/route-definition";
+import { buildRoutes } from './builder'
+import { Segment } from './segment'
+import { RouterAPI } from './types/api-definition'
+import { RouteDefinition } from './types/route-definition'
+
+type ResolveLocation = (location: string) => {
+    node: RouterAPI<any>
+    args: Record<string, unknown>
+    params: Record<string, unknown>
+} | null
 
 export const defineRoute = <const T extends RouteDefinition>(
-  routeDefinition: T
-) => buildRoutes(routeDefinition);
+    routeDefinition: T
+): [RouterAPI<T>, ResolveLocation | null] => [
+    buildRoutes(routeDefinition),
+    null,
+]
 
-export type { PathOptions, SearchParamsInput } from "./types/api-definition";
-export type { ArgTypes } from "./types/route-definition";
+export type { PathOptions, SearchParamsInput } from './types/api-definition'
+export type { ArgTypes } from './types/route-definition'
 
-const root = defineRoute({
-  bag: {
-    __search: {
-      q: {
-        type: "string",
-      },
-      page: {
-        type: 'number',
-        optional: true,
-      },
+const [root, resolveLocation] = defineRoute({
+    rooms: {
+        roomId: {
+            __argType: 'string',
+            windows: {
+                __search: {
+                    open: {
+                        type: 'number',
+                    },
+                    dirty: {
+                        type: 'boolean',
+                    },
+                },
+            },
+        },
+        doom: {},
     },
-    pocket: {
-      __argType: 'string',
-      __search: {
-        page: {
-          type: 'number'
-        }
-      }
-    }
-  }
-});
-
-// params is showing an error, ask if you want the text of it
-console.log(root.bag.path({ params: { q: "yes" } }));
-console.log(root.bag.pocket('foo').path({ params: { page: 5 } }))
+})
+console.log(root.rooms.roomId('ssd').path())
+const path = '/rooms/foo/windows?open=3&clean=true'
+// const reolved = resolveLocation(path)

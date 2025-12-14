@@ -31,6 +31,6 @@ root.rooms.roomId('foo').path();
 // /rooms/foo
 root.rooms.roomId('foo').doors.path();
 // /rooms/foo/doors
-room.rooms.roomId('foo').windows({ params: { open: 4, clean: false } });
+room.rooms.roomId('foo').windows.path({ params: { open: 4, clean: false } });
 // /rooms/foo/windows?open=4&clean=false
 ```

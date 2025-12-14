@@ -5,7 +5,7 @@ import { checkArgType, getPublicApiMethods } from './utils';
 
 export const buildRoutes = <const T extends RouteDefinition>(
     def: T & RouteDefinition,
-    parent: Segment | null = null
+    parent: Segment
 ): RouterAPI<T> => {
     const api: any = {};
 
@@ -34,7 +34,7 @@ export const buildRoutes = <const T extends RouteDefinition>(
                     );
                 }
 
-                const childSegment = new Segment(String(v), parent);
+                const childSegment = new Segment(String(v), parent, __search);
                 return Object.keys(children).length > 0
                     ? buildRoutes(children, childSegment)
                     : getPublicApiMethods(
@@ -43,7 +43,7 @@ export const buildRoutes = <const T extends RouteDefinition>(
                       );
             };
         } else {
-            const childSegment = new Segment(key, parent);
+            const childSegment = new Segment(key, parent, __search);
             const hasChildren =
                 children &&
                 typeof children === 'object' &&
@@ -57,7 +57,7 @@ export const buildRoutes = <const T extends RouteDefinition>(
         }
     }
 
-    const segmentForApi = parent ?? new Segment(null, null);
+    const segmentForApi = parent;
     Object.assign(
         api,
         getPublicApiMethods(segmentForApi, def.__search as typeof def.__search)

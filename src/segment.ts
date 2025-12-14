@@ -1,6 +1,6 @@
-import { PathOptions } from './types/api-definition'
-import { RelativeFrom } from './types/types'
-import { toSearchParams } from './utils'
+import { PathOptions } from './types/api-definition';
+import { RelativeFrom } from './types/types';
+import { toSearchParams } from './utils';
 
 export class Segment {
     constructor(
@@ -9,49 +9,49 @@ export class Segment {
     ) {}
 
     path(options?: PathOptions): string {
-        const segments = this.segments()
-        const full = `/${segments.join('/')}${toSearchParams(options?.params)}`
-        return full.replace(/\/+/, '/')
+        const segments = this.segments();
+        const full = `/${segments.join('/')}${toSearchParams(options?.params)}`;
+        return full.replace(/\/+/, '/');
     }
 
     segmentOnly(): string {
-        return this.segment ?? '/'
+        return this.segment ?? '/';
     }
 
     segments(): string[] {
-        const segments: string[] = [this.segmentOnly()]
-        let parent = this.parent
+        const segments: string[] = [this.segmentOnly()];
+        let parent = this.parent;
         while (parent !== null) {
-            segments.unshift(parent.segmentOnly())
-            parent = parent.parent
+            segments.unshift(parent.segmentOnly());
+            parent = parent.parent;
         }
-        return segments
+        return segments;
     }
 
     relativeFrom(prevLocation: RelativeFrom): string {
-        const fromParts = this.segments()
+        const fromParts = this.segments();
         if (typeof prevLocation === 'object') {
-            prevLocation = prevLocation.path()
+            prevLocation = prevLocation.path();
         }
         const toParts = prevLocation
             .replace(/\/+/, '/')
             .split('/')
-            .filter(Boolean)
+            .filter(Boolean);
 
-        let i = 0
+        let i = 0;
         while (
             i < fromParts.length &&
             i < toParts.length &&
             fromParts[i] === toParts[i]
         ) {
-            i++
+            i++;
         }
 
-        const down = toParts.length - i
-        const up = fromParts.slice(i)
+        const down = toParts.length - i;
+        const up = fromParts.slice(i);
 
         return `${new Array(down).fill('..').join('/')}${
             down && up.length ? '/' : ''
-        }${up.join('/')}`
+        }${up.join('/')}`;
     }
 }

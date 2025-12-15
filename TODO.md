@@ -55,3 +55,18 @@ it could be written as:
 ```ts
 paramName: 'string[]'
 ```
+
+## Partial root variables
+Maybe this is bad route design, but what if I wanted
+`/some/root/that-is/number-:num`
+would need to change __argType to be an object
+and to be fair maybe argtype _should_ be an object anyway
+```ts
+argType= {
+  type: "string",
+  pattern: 'number-:
+}
+```
+
+# Issues
+I can have

@@ -1,12 +1,18 @@
 import { PathOptions } from './types/api-definition';
+import { Params } from './types/route-definition';
 import { RelativeFrom } from './types/types';
 import { toSearchParams } from './utils';
 
 export class Segment {
+    public readonly children: Segment[] = [];
     constructor(
-        private readonly segment: string | null,
-        private readonly parent: Segment | null
-    ) {}
+        public readonly segment: string | null,
+        public readonly parent: Segment | null,
+        public readonly search: Params | undefined
+    ) {
+        this.children = [];
+        parent?.children.push(this);
+    }
 
     path(options?: PathOptions): string {
         const segments = this.segments();

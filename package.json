@@ -1,22 +1,22 @@
 {
-  "name": "safe-routes",
-  "version": "1.0.0",
-  "description": "typesafe route definition",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "scripts": {
-    "build": "tsc",
-    "check": "tsc --noEmit",
-    "dev": "ts-node-dev --respawn --clear ./src/index.ts",
-    "dev:debug": "ts-node-dev --inspect=9229 --respawn --clear ./src/index.ts",
-    "start": "ts-node ./src/index.ts"
-  },
-  "author": "",
-  "license": "ISC",
-  "devDependencies": {
-    "prettier": "^3.7.4",
-    "ts-node": "^10.9.2",
-    "ts-node-dev": "^2.0.0",
-    "typescript": "^5.9.3"
-  }
+    "name": "safe-passage",
+    "version": "1.0.0",
+    "description": "typesafe route definition",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "scripts": {
+        "build": "tsc",
+        "check": "tsc --noEmit",
+        "dev": "ts-node-dev --respawn --clear ./src/index.ts",
+        "dev:debug": "ts-node-dev --inspect=9229 --respawn --clear ./src/index.ts",
+        "start": "ts-node ./src/index.ts"
+    },
+    "author": "",
+    "license": "ISC",
+    "devDependencies": {
+        "prettier": "^3.7.4",
+        "ts-node": "^10.9.2",
+        "ts-node-dev": "^2.0.0",
+        "typescript": "^5.9.3"
+    }
 }

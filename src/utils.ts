@@ -33,13 +33,13 @@ export const getPublicApiMethods = <S extends Params | undefined = undefined>(
     segment: Segment,
     search?: S
 ): PublicMethods<S> => ({
-    toString: () => segment.path(),
     path: (options?: PathOptions<S>) => {
         if (search && options?.params) {
             validateSearchParams(search, options.params, segment.path());
         }
         return segment.path(options);
     },
+    template: () => segment.path(),
     segment: () => segment.segmentOnly(),
     segments: () => segment.segments(),
     relativeFrom: (prevLocation: RelativeFrom) =>
@@ -64,6 +64,9 @@ export const validateSearchParams = (
         const value = params[key];
         const def = schema[key];
 
+        const isObjectDef = typeof def === 'object';
+        const type = isObjectDef ? def.type : def;
+
         if (!def) {
             throw new TypeError(
                 `Unknown search parameter "${key}" for path ${path}`
@@ -71,7 +74,7 @@ export const validateSearchParams = (
         }
 
         if (value === undefined) {
-            if (!def.optional) {
+            if (isObjectDef && def.required) {
                 throw new TypeError(
                     `Search parameter "${key}" is required for path ${path}`
                 );
@@ -79,9 +82,9 @@ export const validateSearchParams = (
             continue;
         }
 
-        if (!checkSearchType(def.type, value)) {
+        if (!checkSearchType(type, value)) {
             throw new TypeError(
-                `Invalid type for search parameter "${key}", expected ${def.type} for path ${path}`
+                `Invalid type for search parameter "${key}", expected ${type} for path ${path}`
             );
         }
     }

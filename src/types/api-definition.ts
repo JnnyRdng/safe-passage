@@ -23,7 +23,7 @@ export type PathOptions<P extends Params | undefined = undefined> = {
 export type PublicMethods<P extends Params | undefined = undefined> = {
     /**Print the absolute path.  */
     path(options?: PathOptions<P>): string;
-    toString: () => string;
+    template(): string;
     /** Return the segment name */
     segment(): string;
     /** Return the path as an array of segments */

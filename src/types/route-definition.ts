@@ -5,11 +5,6 @@ export type DefinitionKeys = '__argType' | '__search';
 /** The allowable arg types for a route parameter */
 export type ArgTypes = 'string' | 'number' | 'boolean' | 'bigint' | 'symbol';
 
-type LeafNode = {
-    __argType?: ArgTypes;
-    __search?: Params;
-};
-
 export type ParamType =
     | string
     | number
@@ -27,37 +22,48 @@ export type ParamLiteral =
     | 'string[]'
     | 'number[]'
     | 'boolean[]';
-export interface Param {
-    type: ParamLiteral;
-    optional?: boolean;
-}
+export type Param =
+    | {
+          type: ParamLiteral;
+          required?: boolean;
+      }
+    | ParamLiteral;
 export interface Params {
     [key: string]: Param;
 }
 
-type ParamToTS<P extends Param> = TypeMap[P['type']];
+type ParamToTS<P extends Param> = TypeMap[P extends object ? P['type'] : P];
 
 type RequiredParams<S extends Params> = {
-    [K in keyof S as S[K]['optional'] extends true ? never : K]: ParamToTS<
-        S[K]
-    >;
+    [K in keyof S as S[K] extends object
+        ? S[K]['required'] extends true
+            ? K
+            : never
+        : never]: ParamToTS<S[K]>;
 };
 
 type OptionalParams<S extends Params> = {
-    [K in keyof S as S[K]['optional'] extends true ? K : never]?: ParamToTS<
-        S[K]
-    >;
+    [K in keyof S as S[K] extends object
+        ? S[K]['required'] extends true
+            ? K
+            : never
+        : K]?: ParamToTS<S[K]>;
 };
 
 export type InferSearchParams<S extends Params | undefined> = S extends Params
     ? RequiredParams<S> & OptionalParams<S>
     : {};
 
+type LeafNode = {
+    __argType?: ArgTypes;
+    __search?: Params;
+};
+
 type RouteNode = {
     __argType?: ArgTypes;
     __search?: Params;
 } & {
-    [K in Exclude<string, DefinitionKeys>]?: RouteDefinition;
+    [K in Exclude<string, DefinitionKeys | 'path'>]?: RouteDefinition;
 };
 
 /** A route definition */
